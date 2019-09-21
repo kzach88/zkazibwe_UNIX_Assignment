@@ -1,5 +1,7 @@
 # zkazibwe_UNIX_Assignment
 #cd into UNIX Assignment Git pull to update my Unix Assignment folder.
+Made new folder called zkazibwe_UNIX_Assignment within Unix_Assignment folder on HPC-class
+Cloned it into my bash working space 
 
 ls to inspect the contents of my Unix Assignment folder. Git pull origin master, Already uptodate
 
@@ -51,7 +53,8 @@ git commit -m "initial commit (README.md)
 
 git push origin master
 
-##Data Processing Made a new repository called ensamba_Unix_Assignment Cloned it into my bash working space
+##Data Processing 
+Made a new repository called  Cloned it into my bash working space
 
 https://github.com/ensamba/Unix_Assignment.git
 
