@@ -54,160 +54,81 @@ git commit -m "initial commit (README.md)
 git push origin master
 
 ##Data Processing 
-Made a new repository called  Cloned it into my bash working space
+#i BCB546X_UNIX_ASSIGNMENT
+1. Extracting Info from Files
+First, I took the column headers and put them in new files. Then, I extracted the maize and teosinte data and appended them to the new files.
+$ head -n 1 fang_et_al_genotypes.txt > maize_genotypes.txt
+$ head -n 1 fang_et_al_genotypes.txt > teosinte_genotypes.txt
+$ awk '$3 ~ /ZMMIL|ZMMLR|ZMMMR/ { print $0}' fang_et_al_genotypes.txt >> maize_genotypes.txt
+$ awk '$3 ~ /ZMPBA|ZMPIL|ZMPJA/ { print $0}' fang_et_al_genotypes.txt >> teosinte_genotypes.txt
+2. Separate Maize and Teosinte genotypes
+$ grep -E "(ZMMIL|ZMMLR|ZMMMR|Group)" fang_et_al_genotypes.txt | cut -f 1,4-986 |awk -f transpose.awk  > maize_genotype.txt  
+$ sed 's/Sample_ID/SNP_ID/' maize_genotype.txt | sort –k1,1 > maize_sgenotype.txt 
+$ grep -E "(ZMPBA|ZMPIL|ZMPJA|Group)" fang_et_al_genotypes.txt | cut -f 1,4-986 |awk -f transpose.awk > teosinte_genotype.txt  
+$ sed 's/Sample_ID/SNP_ID/' teosinte_genotype.txt | sort –k1,1 > teosinte_sgenotype.txt
+
+##### grep command is to print out lines containing "ZMMIL", "ZMMLR" "ZMMMR" and "Group" ("ZMPBA", "ZMPIL" "ZMPJA" and "Group" for teosinte), which are maize samples and the header;cut commands is to remove the 2 columns we don't need;awk command is to transpose the table so that it has the same data frame with snp_infor.txt and we can join them later;sed command is change the header in genotype file to the same with SNP file, so that we can join them later;sort command is to sort by the 1st column;
+
+new files saved as maize_sgenotype.txt and teosinte_sgenotype.txt OR maize_genotype.txt and teosinte_genotype.txt
+
+I checked to make sure my extractions worked by looking at the number of lines, words and characters in each file
+[zkazibwe@hpc-class My-Unix_AS]$ wc maize_genotypes.txt teosinte_genotypes.txt
+    1574  1551964  6250961 maize_genotypes.txt
+     976   962336  3884185 teosinte_genotypes.txt
+    2550  2514300 10135146 total
+ I also checked to see that each file had only the groups that I wanted by cutting the groups from column 3, sorting them and running the command unique and getting a count.
+[zkazibwe@hpc-class My-Unix_AS]$ cut -f 3 maize_genotypes.txt | sort | uniq -c
+      1 Group
+    290 ZMMIL
+   1256 ZMMLR
+     27 ZMMMR
+[zkazibwe@hpc-class My-Unix_AS]$ cut -f 3 teosinte_genotypes.txt | sort | uniq -c
+      1 Group
+    900 ZMPBA
+     41 ZMPIL
+     34 ZMPJA
+[zkazibwe@hpc-class My-Unix_AS]$
+
+3. Combine genotype with SNP position
+[zkazibwe@hpc-class My-Unix_AS]$ join -1 1 -2 1 -t $'\t' snp_infor.txt teosinte_sgenotype.txt > teosinte_joint.txt
+[zkazibwe@hpc-class My-Unix_AS]$ ^C
+[zkazibwe@hpc-class My-Unix_AS]$ join -1 1 -2 1 -t $'\t' snp_infor.txt maize_sgenotype.txt > maize_joint.txt
+
+4. Separate SNPs based on Chromosome
+[zkazibwe@hpc-class My-Unix_AS]$ for i in {1..10} ; do (awk '$1 ~ /SNP/' maize_joint.txt && awk '$2 == '$i'&& $3 != "multiple"' maize_joint.txt) > maize_chr$i.txt ; done
+[zkazibwe@hpc-class My-Unix_AS]$ (awk '$1 ~ /SNP/' maize_joint.txt && awk '$3 == "unknown"' maize_joint.txt )> maize_unknown.txt
+[zkazibwe@hpc-class My-Unix_AS]$ (awk '$1 ~ /SNP/' maize_joint.txt && awk '$2 == "multiple" || $3 == "multiple"' maize_joint.txt )> maize_multiple.txt
+[zkazibwe@hpc-class My-Unix_AS]$ for i in {1..10} ; do (awk '$1 ~ /SNP/' teosinte_joint.txt && awk '$2 == '$i' && $3 != "multiple"' teosinte_joint.txt) > teosinte_chr$i.txt ; done
+[zkazibwe@hpc-class My-Unix_AS]$ (awk '$1 ~ /SNP/' teosinte_joint.txt && awk '$3 == "unknown"' teosinte_joint.txt )> teosinte_unknown.txt
+[zkazibwe@hpc-class My-Unix_AS]$ (awk '$1 ~ /SNP/' teosinte_joint.txt && awk '$2 == "multiple" || $3 == "multiple" ' teosinte_joint.txt) > teosinte_multiple.txt
+[zkazibwe@hpc-class My-Unix_AS]$
+
+for command is used to do the loop for 10 chromosomes;
+awk command is used to first print out header and then print out the records which feature pattern that field2 is the same with value of i;
+new file saved as maize_chr$i.txt and teosinte_Chr$i.txt, in which i is the number of chromosome.
+
+5. Sort SNPs based on position
+[zkazibwe@hpc-class My-Unix_AS]$ for i in {1..10}; do (head -n 1 maize_chr$i.txt && tail -n +2 maize_chr$i.txt | sort -k3,3n )> incr_maize_chr$i.txt ; done
+[zkazibwe@hpc-class My-Unix_AS]$ for i in {1..10}; do (head -n 1 maize_chr$i.txt && tail -n +2 maize_chr$i.txt | sort -k3r,3n ) | sed 's/?/-/g' > decr_maize_chr$i.txt ; done
+[zkazibwe@hpc-class My-Unix_AS]$ for i in {1..10}; do (head -n 1 teosinte_chr$i.txt && tail -n +2 teosinte_chr$i.txt | sort -k3,3n )> incr_teosinte_chr$i.txt ; done
+[zkazibwe@hpc-class My-Unix_AS]$ for i in {1..10}; do (head -n 1 teosinte_chr$i.txt && tail -n +2 teosinte_chr$i.txt | sort -k3r,3n ) | sed 's/?/-/g' > decr_teosinte_chr$i.txt ; done
+[zkazibwe@hpc-class My-Unix_AS]$
+
+for command is used to do the loop for 10 files;
+head and tail command are used to keep the header at top and then do the sorting on the other lines;
+sort command is the key command here. We do the sorting based on the 3rd column, which shows the position of SNP. -k3 means the result will be listed increasingly and -k3r means the reverse. 3n means they are treated as numeric.
+sed command is used to switch the "?", which is encoded to be missing data, to "-";
+new files are saves as incr_maize_chr$i.txt / incr_teosinte_chr$i.txt if their position is listed increasingly; decr_maize_chr$i.txt / decr_teosinte_chr$i.txt if their position is listed decreasingly.
+
+6. Preparing all my files to send to git repository
+$ mkdir maize teosinte process_file
+$ mv decr_maize* incr_maize* maize_m* maize_u* ./maize
+$ mv decr_teosinte* incr_teosinte* teosinte_m* teosinte_u* ./teosinte
+$ mv * ./process_file   
+
+mkdir command is to make sub-directories under this directory;
+mv commands are to move files to different directories;
+Here we moved 12 maize-related files to ./MAIZE_FILES directory; 12 teosinte-related files to ./TEOSINTE_FILES directory; the other files generated during the above process and also the original 3 files are moved to ./OTHER_FILES
+join command is to combine the two file based on the 1st column of snp_infor.txt and the 1st column of maize_transposed_genotype.txt;
+new file saved as maize_joint.txt
 
-https://github.com/ensamba/Unix_Assignment.git
-
-######Step 1
-
-Extracting specific Maize and Teosinte SNP_IDs from the fang et al genotypes
-
-Maize
-
-grep -E "(ZMMIL|ZMMLR|ZMMMR)" fang_et_al_genotypes.txt > Maize_file
-
-However, it lacks the headers, so to put back the headers I used the head command head -n1 fang_et_al_genotypes.txt > header
-
-Then to join the maize file with the header so as to restore the headers, I used the catcommand cat header Maize_file1 > Maize_header
-
-Teosinte grep -E "(ZMPBA|ZMPIL|ZMPJA)" fang_et_al_genotypes.txt > Teosinte_file head -n1 fang_et_al_genotypes.txt > header
-
-cat header Maize_file1 > Teosinte_header
-
-Now I have the files Maize_header and Teosinte_header.
-
-Stage and commit new files git add Maize_header Teosinte_header git commit -m "initial commit (Maize_header Teosinte_header)" git push origin master
-
-######Step 2: The next step is to transponse, sort and join them together. #####Step 2a: Transposing the files so that rows become columns
-
-Maize SNP files from the Maize_header file that I created awk -f transpose.awk Maize_header > transponsed_Maize_genotypes.txt Just a quick inspection to view file contents sort -k1,1 -k2,2n -k3,3n transponsed_Maize_genotypes.txt | cut -f1-10 | head Sort the file so that it's ready for joining based on c Sorted basing on column 1
-
-sort -k1,1 transponsed_Maize_genotypes.txt > sorted_Maize_genotypes.txt Teosinte SNP files from the Teosinte_header file that I created awk -f transpose.awk Teosinte_header > transponsed_teosinte_genotypes.txt Sorting by column 1 sort -k1,1 transponsed_teosinte_genotypes.txt > sorted_Teosinte_genotypes.txt
-
-Stage and commit new files
-
-$ git add sorted_Teosinte_genotypes.txt sorted_Maize_genotypes.txt $ git commit -m "initial commit (sorted_Teosinte_genotypes.txt sorted_Maize_genotypes.txt)" $ git push origin master
-
-####Note Before joining each of these sorted files to the snp_position.txt file, I first sorted it by the common column 1, then cut out the columns I needeed. sort -k1,1 snp_position.txt | cut -f 1-5 > sorted_snp_position.txt
-
-####Step 2b:Joining the files ######Used the join command
-
-maize group IDs to the snp_sorted file. join -t $'\t' -1 1 -2 1 sorted_snp_position.txt sorted_Maize_genotypes.txt > Maize_SNP_joined.txt Just a quick check to be sure that I have the correct number of columns awk -F "\t" '{print NF; exit}' Maize_SNP_joined.txt 1578
-
-Inspecting the file to ensure that join was complete wc -l sorted_Maize_genotypes.txt sorted_snp_position.txt Maize_snp_joined.txt
-
-986 sorted_Maize_genotypes.txt 984 sorted_snp_position.txt 983 Maize_snp_joined.txt 2953 total Teosinte group IDs to the snp-sorted files. join -t $'\t' -1 1 -2 1 sorted_snp_position.txt sorted_Teosinte_genotypes.txt > Teosinte_SNP_joined.txt Inspecting the file to ensure that join was complete wc -l sorted_Teosinte_genotypes.txt sorted_snp_position.txt Teosinte_snp_joined.txt
-
-986 sorted_Teosinte_genotypes.txt 984 sorted_snp_position.txt 983 Teosinte_snp_joined.txt ####Step 2c: Sorting the joined files by chromosome numerically for processing Maize
-
-sort -k3,3n Maize_SNP_joined.txt > Maize_sorted_chr.txt Teosinte
-
-sort -k3,3n Teosinte_SNP_joined.txt > Teosinte_sorted_chr.txt
-
-Stage and commit new files
-
-$ git add Maize_sorted_chr.txt Teosinte_sorted_chr.txt $ git commit -m "initial commit (Maize_sorted_chr.txt Teosinte_sorted_chr.txt)" $ git push origin master
-
-####Step 2d: Organizing files Made two separate folders to organize Maize files alone and the same to Teosinte files mkdir Maize_data_files Teosinte_data_files
-
-cp Maize_header Maize_SNP_joined.txt Maize_SNPs_multiple Maize_sorted_chr.txt Maize_substituted.txt Maize_substituted_dash.txt sorted_Maize_genotypes.txt Maize_data_files/
-
-cp Teosinte_header Teosinte_SNP_joined.txt Teosinte_sorted_chr.txt Teosinte_substituted_dash.txt Teosinte_substituted.txt sorted_Teosinte_genotypes.txt Teosinte_data_files/
-
-Stage and commit new files git add Maize_data_files/ Teosinte_data_files/
-
-git commit -m "initial commit (Maize_data_files Teosinte_data_files)"
-
-$ git push origin master
-
-######Step 3 ###Using the sed program insert special characters in missing data set as required by the assignment.
-
-By this I substituted tab delimiters for the sorted files into ? for both Maize and Teosinte. sed 's//?/g' Maize_sorted_chr.txt > Maize_substituted.txt
-
-sed 's//?/g' Teosinte_sorted_chr.txt > Teosinte_substituted.txt
-
-Then for the inverted file, I substituted the ? into - as follows
-
-sed 's/?/-/g' Maize_sorted_chr.txt > Maize_substituted_dash.txt sed 's/?/-/g' Teosinte_sorted_chr.txt > Teosinte_substituted_dash.txt
-
-######Step 4 ###Use the loop command on the seeded files and out put contents of specific chromosomes 1 to 10 Maize
-
-for i in {1..10}; do awk '$3=='$i'' Maize_substituted.txt > chr"$i"_Maize_substituted.txt; done
-
-for i in {1..10}; do awk '$3=='$i'' Maize_substituted_dash.txt > chr"$i"_Maize_substituted_dash.txt; done Teosinte
-
-for i in {1..10}; do awk '$3=='$i'' Teosinte_substituted_dash.txt > chr"$i"_Teosinte_substituted_dash.txt; done
-
-for i in {1..10}; do awk '$3=='$i'' Teosinte_substituted.txt > chr"$i"_Teosinte_substituted.txt; done
-
-#Questions ######1. 10 files (1 for each chromosome) with SNPs ordered based on increasing position values and with missing data encoded by this symbol:?
-
-Maize Made a directory to store my output files mkdir chr#_Maize_SNPs_Increase sort -k4,4n chr#_Maize_substituted.txt > chr#_Maize_SNPs_increase.txt where # represents chromosomes 1-10
-
-Alternatively, I tried verifying it by by another set of command which didn't seem to be working fine for i in {1..10}; do sort '$4=='$i'' Maize_substituted.txt > chr"$i"_Maize_SNPs_increase.txt; done
-
-Staging and Commiting new files git add chr#_Maize_SNPs_Increase/ git commit -m "initial commit (chr#_Maize_SNPs_Increase)" git push origin master
-
-Teosinte mkdir chr#_Teosinte_SNPs_Increase
-
-sort -k4,4n chr#_Teosinte_substituted.txt > chr#_Teosinte_SNPs_increase.txt
-
-Staging and commiting new files git add chr#_Teosinte_SNPs_Increase/
-
-git commit -m "initial commit (chr#_Teosinte_SNPs_Increase)"
-
-git push origin master
-
-######2. 10 files (1 for each chromosome) with SNPs ordered based on decreasing position values and with missing data encoded by this symbol: -
-
-Maize mkdir chr#_Maize_SNPs_decrease
-
-sort -k4,4nr chr#_Maize_substituted_dash.txt > chr#_Maize_SNPs_decrease.txt
-
-Teosinte mkdir chr#_Teosinte_SNPs_decrease.txt
-
-sort -k4,4nr chr#_Teosinte_substituted_dash.txt > chr#_Teosinte_SNPs_decrease.txt
-
-Staging and commiting new files git add chr#_Teosinte_SNPs_decrease.txt/ chr#_Maize_SNPs_decrease.txt/
-
-git commit -m "initial commit (chr#_Teosinte_SNPs_decrease.txt/ chr#_Maize_SNPs_decrease.txt/)"
-
-git push origin master
-
-######1 file with all SNPs with unknown positions in the genome (these need not be ordered in any particularway)
-
-Maize grep "unknown" Maize_sorted_chr.txt > Maize_unknown_Snps.txt
-
-Teosinte grep "unknown" Teosinte_sorted_chr.txt > Teosinte_unknown_Snps.txt
-
-Staging and commiting files git add Maize_unknown_Snps.txt Teosinte_unknown_Snps.txt
-
-git commit -m "initial commit(Maize_unknown_Snps.txt Teosinte_unknown_Snps.txt)"
-
-git push origin master
-
-######1 file with all SNPs with multiple positions in the genome (these need not be ordered in any particular way)
-
-Maize grep "multiple" Maize_sorted_chr.txt > Maize_multiple_Snps.txt
-
-Teosinte grep "multiple" Teosinte_sorted_chr.txt > Teosinte_multiple_Snps.txt
-
-Staging and commiting files
-
-git add Maize_multiple_Snps.txt Teosinte_multiple_Snps.txt
-
-git commit -m "initial commit(Maize_multiple_Snps.txt Teosinte_multiple_Snps.txt)"
-
-git push origin master
-
-#A total of 44 files were produced. These were organized into separate folders for both Maize and the Teosinte.
-
-Results:
-
-20 files (1 for each chromosome), for maize and teosinte with SNPs ordered based on increasing position values and with missing data encoded by? chr#_Teosinte_SNPs_increase.txt Chr#_Maize_SNPs_increase.txt
-
-20 files (1 for each chromosome), for maize and teosinte with SNPs ordered based on decreasing position values and with missing data encoded by - chr#_Maize_SNPs_decrease.txt chr#_Teosinte_SNPs_decrease.tx
-
-1 file with all SNPs with multiple positions in the genome for both Teosinte and Maize Maize_multiple_Snps.txt Teosinte_multiple_Snps.txt
-
-1 file with all SNPs with unknown positions in the genome for both Teosinte and Maize Teosinte_unknown_Snps.txt Maize_unknown_Snps.txt
