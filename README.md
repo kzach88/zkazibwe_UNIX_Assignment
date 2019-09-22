@@ -131,4 +131,3 @@ mv commands are to move files to different directories;
 Here we moved 12 maize-related files to ./MAIZE_FILES directory; 12 teosinte-related files to ./TEOSINTE_FILES directory; the other files generated during the above process and also the original 3 files are moved to ./OTHER_FILES
 join command is to combine the two file based on the 1st column of snp_infor.txt and the 1st column of maize_transposed_genotype.txt;
 new file saved as maize_joint.txt
-
